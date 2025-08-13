@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>أداة تصحيح الأخطاء الإملائية للمعلمين</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Cairo', sans-serif;
+        }
+        
+        .error-highlight {
+            background-color: #fef2f2;
+            border-bottom: 2px wavy #ef4444;
+            padding: 2px 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .error-highlight:hover {
+            background-color: #fee2e2;
+        }
+        
+        .correction-popup {
+            position: absolute;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            z-index: 1000;
+            max-width: 300px;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1"></div>
+                <div class="flex-1">
+                    <h1 class="text-4xl font-bold text-gray-800 mb-4">🔍 أداة تصحيح الأخطاء الإملائية</h1>
+                    <p class="text-lg text-gray-600">مساعد ذكي للمعلمين لتصحيح الأخطاء الإملائية باستخدام الذكاء الاصطناعي</p>
+                </div>
+                <div class="flex-1 flex justify-end">
+                    <!-- Connection Status -->
+                    <div class="flex items-center gap-2 mb-4">
+                        <div id="connectionStatus" class="flex items-center gap-2 px-3 py-2 rounded-full bg-gray-100">
+                            <div id="statusIndicator" class="w-3 h-3 rounded-full bg-gray-400"></div>
+                            <span id="statusText" class="text-sm font-medium text-gray-600">غير متصل</span>
+                        </div>
+                    </div>
+                    <!-- Developer Menu -->
+                    <div class="relative">
+                        <button id="developerBtn" class="bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="bg-white rounded-2xl shadow-xl p-8 mb-6">
+            <!-- Input Section -->
+            <div class="mb-6">
+                <label for="textInput" class="block text-lg font-semibold text-gray-700 mb-3">
+                    📝 النص المراد تصحيحه:
+                </label>
+                <textarea 
+                    id="textInput" 
+                    class="w-full h-40 p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none resize-none text-lg leading-relaxed"
+                    placeholder="اكتب أو الصق النص هنا للتحقق من الأخطاء الإملائية..."
+                ></textarea>
+            </div>
+
+            <!-- Text Style Options -->
+            <div class="mb-6">
+                <label class="block text-lg font-semibold text-gray-700 mb-3">
+                    🎨 نمط النص المطلوب:
+                </label>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <label class="flex items-center gap-2 p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-300 transition-colors">
+                        <input type="radio" name="textStyle" value="formal" class="text-blue-600" checked>
+                        <span class="text-sm font-medium">📋 رسمي</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-300 transition-colors">
+                        <input type="radio" name="textStyle" value="casual" class="text-blue-600">
+                        <span class="text-sm font-medium">💬 عادي</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-300 transition-colors">
+                        <input type="radio" name="textStyle" value="colloquial" class="text-blue-600">
+                        <span class="text-sm font-medium">🗣️ عامي</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-300 transition-colors">
+                        <input type="radio" name="textStyle" value="academic" class="text-blue-600">
+                        <span class="text-sm font-medium">🎓 أكاديمي</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Additional Options -->
+            <div class="mb-6">
+                <label class="block text-lg font-semibold text-gray-700 mb-3">
+                    ⚙️ خيارات إضافية:
+                </label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                        <input type="checkbox" id="improveGrammar" class="text-blue-600" checked>
+                        <span class="text-sm font-medium">✅ تحسين القواعد النحوية</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                        <input type="checkbox" id="enhanceVocabulary" class="text-blue-600">
+                        <span class="text-sm font-medium">📚 تحسين المفردات</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                        <input type="checkbox" id="fixPunctuation" class="text-blue-600" checked>
+                        <span class="text-sm font-medium">🔤 تصحيح علامات الترقيم</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                        <input type="checkbox" id="improveCohesion" class="text-blue-600">
+                        <span class="text-sm font-medium">🔗 تحسين التماسك النصي</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap gap-4 mb-6">
+                <button 
+                    id="checkBtn" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl"
+                >
+                    <span>🔍</span>
+                    فحص الأخطاء
+                </button>
+                
+                <button 
+                    id="clearBtn" 
+                    class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center gap-2"
+                >
+                    <span>🗑️</span>
+                    مسح النص
+                </button>
+                
+                <button 
+                    id="copyBtn" 
+                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center gap-2 hidden"
+                >
+                    <span>📋</span>
+                    نسخ النص المصحح
+                </button>
+
+                <button 
+                    id="testConnectionBtn" 
+                    class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center gap-2"
+                >
+                    <span>🔗</span>
+                    اختبار الاتصال
+                </button>
+
+
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="loadingIndicator" class="hidden flex items-center justify-center py-8">
+                <div class="loading-spinner"></div>
+                <span class="mr-3 text-gray-600">جاري فحص النص...</span>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" class="hidden">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">📊 نتائج الفحص:</h3>
+                
+                <!-- Statistics -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                        <div class="text-2xl font-bold text-red-600" id="errorCount">0</div>
+                        <div class="text-sm text-red-700">أخطاء مكتشفة</div>
+                    </div>
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                        <div class="text-2xl font-bold text-green-600" id="correctedCount">0</div>
+                        <div class="text-sm text-green-700">تصحيحات مطبقة</div>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                        <div class="text-2xl font-bold text-blue-600" id="accuracyRate">0%</div>
+                        <div class="text-sm text-blue-700">معدل الدقة</div>
+                    </div>
+                </div>
+
+                <!-- Corrected Text -->
+                <div class="mb-6">
+                    <label class="block text-lg font-semibold text-gray-700 mb-3">
+                        ✅ النص المصحح:
+                    </label>
+                    <div 
+                        id="correctedText" 
+                        class="w-full min-h-40 p-4 bg-green-50 border-2 border-green-200 rounded-lg text-lg leading-relaxed"
+                    ></div>
+                </div>
+
+                <!-- Error Details -->
+                <div id="errorDetails" class="mb-6">
+                    <h4 class="text-lg font-semibold text-gray-700 mb-3">🔍 تفاصيل الأخطاء:</h4>
+                    <div id="errorList" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tips Section -->
+        <div class="bg-white rounded-2xl shadow-xl p-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">💡 نصائح للاستخدام:</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex items-start gap-3">
+                    <span class="text-2xl">📝</span>
+                    <div>
+                        <h4 class="font-semibold text-gray-700">إدخال النص</h4>
+                        <p class="text-sm text-gray-600">اكتب أو الصق النص في المربع أعلاه</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="text-2xl">🔍</span>
+                    <div>
+                        <h4 class="font-semibold text-gray-700">فحص الأخطاء</h4>
+                        <p class="text-sm text-gray-600">اضغط على "فحص الأخطاء" لبدء التحليل</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="text-2xl">✏️</span>
+                    <div>
+                        <h4 class="font-semibold text-gray-700">مراجعة التصحيحات</h4>
+                        <p class="text-sm text-gray-600">راجع الأخطاء المكتشفة والتصحيحات المقترحة</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="text-2xl">📋</span>
+                    <div>
+                        <h4 class="font-semibold text-gray-700">نسخ النتيجة</h4>
+                        <p class="text-sm text-gray-600">انسخ النص المصحح لاستخدامه</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup for corrections -->
+    <div id="correctionPopup" class="correction-popup hidden">
+        <div class="font-semibold text-gray-800 mb-2">تصحيح مقترح:</div>
+        <div id="popupContent" class="text-gray-600"></div>
+    </div>
+
+    <!-- Developer Modal -->
+    <div id="developerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300" id="developerModalContent">
+            <div class="p-6 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-blue-600 rounded-t-2xl">
+                <div class="flex justify-between items-center">
+                    <div class="text-white">
+                        <h2 class="text-2xl font-bold">👨‍💻 المطور</h2>
+                        <p class="text-purple-100">أ. عبد الرحمن نصر الله</p>
+                    </div>
+                    <button id="closeDeveloperModal" class="text-white hover:text-purple-200 text-2xl transition-colors">×</button>
+                </div>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    <a href="https://www.instagram.com/nasrallah_2002/" target="_blank" class="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 rounded-xl transition-all duration-300 transform hover:scale-105 border border-purple-200">
+                        <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
+                            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold text-gray-800 text-lg">إنستغرام</div>
+                            <div class="text-purple-600 font-medium">@nasrallah_2002</div>
+                            <div class="text-sm text-gray-500">تابعني للمزيد من المشاريع</div>
+                        </div>
+                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                        </svg>
+                    </a>
+                    
+                    <a href="https://www.youtube.com/@tnasrallah" target="_blank" class="flex items-center gap-4 p-4 bg-gradient-to-r from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100 rounded-xl transition-all duration-300 transform hover:scale-105 border border-red-200">
+                        <div class="w-12 h-12 bg-gradient-to-r from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold text-gray-800 text-lg">يوتيوب</div>
+                            <div class="text-red-600 font-medium">@tnasrallah</div>
+                            <div class="text-sm text-gray-500">شاهد الدروس التعليمية</div>
+                        </div>
+                        <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                        </svg>
+                    </a>
+                </div>
+                
+                <div class="mt-6 p-4 bg-gray-50 rounded-xl">
+                    <div class="text-center text-gray-600">
+                        <p class="text-sm">💻 مطور تطبيقات الويب والذكاء الاصطناعي</p>
+                        <p class="text-xs mt-1">شكراً لاستخدامك لأداة تصحيح الأخطاء الإملائية</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = 'AIzaSyDUkgCGXTZE2huQetekVZVxIJP3xK9q7bE';
+        const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
+
+        let currentErrors = [];
+        let correctedText = '';
+
+        // DOM Elements
+        const textInput = document.getElementById('textInput');
+        const checkBtn = document.getElementById('checkBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const testConnectionBtn = document.getElementById('testConnectionBtn');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const resultsSection = document.getElementById('resultsSection');
+        const correctedTextDiv = document.getElementById('correctedText');
+        const errorCount = document.getElementById('errorCount');
+        const correctedCount = document.getElementById('correctedCount');
+        const accuracyRate = document.getElementById('accuracyRate');
+        const errorList = document.getElementById('errorList');
+        const correctionPopup = document.getElementById('correctionPopup');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const developerBtn = document.getElementById('developerBtn');
+        const developerModal = document.getElementById('developerModal');
+        const developerModalContent = document.getElementById('developerModalContent');
+        const closeDeveloperModal = document.getElementById('closeDeveloperModal');
+
+        // Event Listeners
+        checkBtn.addEventListener('click', checkSpelling);
+        clearBtn.addEventListener('click', clearText);
+        copyBtn.addEventListener('click', copyText);
+        testConnectionBtn.addEventListener('click', testConnection);
+        developerBtn.addEventListener('click', showDeveloperModal);
+        closeDeveloperModal.addEventListener('click', hideDeveloperModal);
+
+        // Close developer modal when clicking outside
+        developerModal.addEventListener('click', (e) => {
+            if (e.target === developerModal) {
+                hideDeveloperModal();
+            }
+        });
+
+        // Initialize connection status and test automatically
+        updateConnectionStatus('disconnected');
+        
+        // Auto test connection on page load
+        setTimeout(() => {
+            testConnection();
+        }, 1000);
+
+        // Auto show developer modal on page load
+        setTimeout(() => {
+            showDeveloperModal();
+        }, 2000);
+
+        async function checkSpelling() {
+            const text = textInput.value.trim();
+            
+            if (!text) {
+                alert('يرجى إدخال نص للفحص');
+                return;
+            }
+
+            // Get selected options
+            const textStyle = document.querySelector('input[name="textStyle"]:checked').value;
+            const improveGrammar = document.getElementById('improveGrammar').checked;
+            const enhanceVocabulary = document.getElementById('enhanceVocabulary').checked;
+            const fixPunctuation = document.getElementById('fixPunctuation').checked;
+            const improveCohesion = document.getElementById('improveCohesion').checked;
+
+            showLoading(true);
+            hideResults();
+            updateConnectionStatus('connecting');
+
+            try {
+                // Build advanced prompt for better correction
+                let prompt = `أنت خبير في اللغة العربية ومتخصص في تصحيح الأخطاء الإملائية والنحوية. قم بتحليل النص التالي بعناية فائقة:
+
+النص الأصلي: "${text}"
+
+مهامك:
+1. 🔍 تحديد الأخطاء الإملائية بدقة (الهمزات، التاء المربوطة والمفتوحة، الألف اللينة)
+2. 📝 تصحيح الأخطاء النحوية (الإعراب، التذكير والتأنيث، الجمع والمفرد)`;
+
+                if (improveGrammar) prompt += '\n3. ✅ تحسين القواعد النحوية والصرفية';
+                if (enhanceVocabulary) prompt += '\n4. 📚 استبدال الكلمات بمرادفات أكثر دقة ووضوحاً';
+                if (fixPunctuation) prompt += '\n5. 🔤 إضافة وتصحيح علامات الترقيم المناسبة';
+                if (improveCohesion) prompt += '\n6. 🔗 تحسين الربط بين الجمل والفقرات';
+
+                // Add style requirements
+                const styleMap = {
+                    'formal': 'رسمي ومهني مناسب للمراسلات الحكومية والأكاديمية',
+                    'casual': 'عادي ومفهوم مناسب للحديث اليومي',
+                    'colloquial': 'عامي مألوف مع الحفاظ على الوضوح',
+                    'academic': 'أكاديمي وعلمي مناسب للبحوث والدراسات'
+                };
+
+                prompt += `\n7. 🎨 تحويل النص إلى أسلوب ${styleMap[textStyle]}
+
+⚠️ تعليمات مهمة:
+- كن دقيقاً جداً في تحديد الأخطاء الحقيقية فقط
+- لا تغير الكلمات الصحيحة
+- احتفظ بالمعنى الأصلي للنص
+- ركز على الأخطاء الشائعة في اللغة العربية
+
+يرجى الرد بالتنسيق التالي بدقة:
+النص المصحح: [النص المصحح كاملاً هنا]
+الأخطاء المكتشفة:
+- الكلمة الخاطئة: [الكلمة الخاطئة] → التصحيح: [الكلمة المصححة] - السبب: [سبب التصحيح بالتفصيل]
+
+إذا لم تجد أخطاء حقيقية، اكتب: "لا توجد أخطاء إملائية أو نحوية في النص"`;
+
+                const response = await fetch(`${API_URL}?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: prompt
+                            }]
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    updateConnectionStatus('error');
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const result = data.candidates[0].content.parts[0].text;
+                
+                updateConnectionStatus('connected');
+                parseResults(result, text);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                updateConnectionStatus('error');
+                alert('حدث خطأ أثناء فحص النص. يرجى المحاولة مرة أخرى.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function parseResults(result, originalText) {
+            const lines = result.split('\n');
+            let correctedTextFound = false;
+            let errorsSection = false;
+            const errors = [];
+            let tempCorrectedText = '';
+            
+            // Check if no errors found
+            if (result.includes('لا توجد أخطاء إملائية أو نحوية في النص')) {
+                correctedText = originalText;
+                currentErrors = [];
+                displayResults(originalText, originalText, []);
+                return;
+            }
+            
+            for (let line of lines) {
+                line = line.trim();
+                
+                if (line.includes('النص المصحح:')) {
+                    tempCorrectedText = line.replace('النص المصحح:', '').trim();
+                    correctedTextFound = true;
+                } else if (correctedTextFound && !line.includes('الأخطاء المكتشفة:') && line && !errorsSection && !line.includes('⚠️') && !line.includes('-')) {
+                    // Continue building corrected text if it spans multiple lines
+                    if (tempCorrectedText) {
+                        tempCorrectedText += ' ' + line;
+                    } else {
+                        tempCorrectedText = line;
+                    }
+                } else if (line.includes('الأخطاء المكتشفة:')) {
+                    errorsSection = true;
+                    correctedText = tempCorrectedText;
+                } else if (errorsSection && line.includes('→')) {
+                    const parts = line.split('→');
+                    if (parts.length >= 2) {
+                        let wrongWord = parts[0].replace(/^-\s*/, '').replace('الكلمة الخاطئة:', '').trim();
+                        let correctionPart = parts[1].trim();
+                        let correction = '';
+                        let reason = '';
+                        
+                        if (correctionPart.includes('التصحيح:')) {
+                            correctionPart = correctionPart.replace('التصحيح:', '').trim();
+                        }
+                        
+                        if (correctionPart.includes(' - السبب:')) {
+                            const reasonParts = correctionPart.split(' - السبب:');
+                            correction = reasonParts[0].trim();
+                            reason = reasonParts[1].trim();
+                        } else if (correctionPart.includes('- السبب:')) {
+                            const reasonParts = correctionPart.split('- السبب:');
+                            correction = reasonParts[0].trim();
+                            reason = reasonParts[1].trim();
+                        } else {
+                            correction = correctionPart.trim();
+                            reason = 'تصحيح إملائي أو نحوي';
+                        }
+                        
+                        if (wrongWord && correction && wrongWord !== correction) {
+                            errors.push({
+                                wrong: wrongWord,
+                                correct: correction,
+                                reason: reason || 'تصحيح إملائي أو نحوي'
+                            });
+                        }
+                    }
+                }
+            }
+
+            // If no corrected text found, use original
+            if (!correctedText || correctedText.trim() === '') {
+                correctedText = originalText;
+            }
+
+            currentErrors = errors;
+            displayResults(originalText, correctedText, errors);
+        }
+
+        function displayResults(originalText, correctedText, errors) {
+            // Update statistics
+            errorCount.textContent = errors.length;
+            correctedCount.textContent = errors.length;
+            
+            const totalWords = originalText.split(/\s+/).length;
+            const accuracy = totalWords > 0 ? Math.round(((totalWords - errors.length) / totalWords) * 100) : 100;
+            accuracyRate.textContent = accuracy + '%';
+
+            // Display corrected text with highlighting
+            let highlightedText = correctedText;
+            
+            // Create a map of corrections for better highlighting
+            const corrections = new Map();
+            errors.forEach((error) => {
+                if (error.correct && error.correct.trim() && error.wrong && error.wrong.trim()) {
+                    corrections.set(error.correct.toLowerCase(), error.wrong);
+                }
+            });
+            
+            // Split text into words and highlight corrections
+            const words = correctedText.split(/(\s+)/);
+            const highlightedWords = words.map(word => {
+                const cleanWord = word.toLowerCase().replace(/[.,!?;:()]/g, '');
+                if (corrections.has(cleanWord)) {
+                    return `<span class="bg-green-200 text-green-800 px-2 py-1 rounded-lg font-semibold border-2 border-green-400 shadow-sm" title="تم تصحيح: ${corrections.get(cleanWord)} → ${word.trim()}">${word}</span>`;
+                }
+                return word;
+            });
+            
+            correctedTextDiv.innerHTML = highlightedWords.join('');
+
+            // Display error details
+            errorList.innerHTML = '';
+            errors.forEach((error, index) => {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'bg-red-50 border border-red-200 rounded-lg p-4 fade-in hover:shadow-md transition-shadow';
+                errorDiv.innerHTML = `
+                    <div class="flex items-start gap-3">
+                        <span class="text-red-500 font-bold text-lg">${index + 1}.</span>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                <span class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium border border-red-300">${error.wrong}</span>
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                                </svg>
+                                <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium border border-green-300">${error.correct}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 bg-gray-50 p-2 rounded italic">${error.reason}</p>
+                        </div>
+                    </div>
+                `;
+                errorList.appendChild(errorDiv);
+            });
+
+            // Show results and copy button
+            resultsSection.classList.remove('hidden');
+            resultsSection.classList.add('fade-in');
+            copyBtn.classList.remove('hidden');
+        }
+
+        function showLoading(show) {
+            if (show) {
+                loadingIndicator.classList.remove('hidden');
+                checkBtn.disabled = true;
+                checkBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                loadingIndicator.classList.add('hidden');
+                checkBtn.disabled = false;
+                checkBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function hideResults() {
+            resultsSection.classList.add('hidden');
+            copyBtn.classList.add('hidden');
+        }
+
+        function clearText() {
+            textInput.value = '';
+            hideResults();
+            currentErrors = [];
+            correctedText = '';
+        }
+
+        async function copyText() {
+            if (correctedText) {
+                try {
+                    await navigator.clipboard.writeText(correctedText);
+                    
+                    // Visual feedback
+                    const originalText = copyBtn.innerHTML;
+                    copyBtn.innerHTML = '<span>✅</span> تم النسخ!';
+                    copyBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    copyBtn.classList.add('bg-green-700');
+                    
+                    setTimeout(() => {
+                        copyBtn.innerHTML = originalText;
+                        copyBtn.classList.remove('bg-green-700');
+                        copyBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                    }, 2000);
+                } catch (err) {
+                    // Fallback for browsers that don't support clipboard API
+                    const textArea = document.createElement('textarea');
+                    textArea.value = correctedText;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    
+                    alert('تم نسخ النص المصحح!');
+                }
+            }
+        }
+
+        // Connection status management
+        function updateConnectionStatus(status) {
+            const statusMap = {
+                'disconnected': {
+                    color: 'bg-gray-400',
+                    bgColor: 'bg-gray-100',
+                    text: 'غير متصل'
+                },
+                'connecting': {
+                    color: 'bg-yellow-400',
+                    bgColor: 'bg-yellow-100',
+                    text: 'جاري الاتصال...'
+                },
+                'connected': {
+                    color: 'bg-green-400',
+                    bgColor: 'bg-green-100',
+                    text: 'متصل'
+                },
+                'error': {
+                    color: 'bg-red-400',
+                    bgColor: 'bg-red-100',
+                    text: 'خطأ في الاتصال'
+                }
+            };
+
+            const config = statusMap[status];
+            statusIndicator.className = `w-3 h-3 rounded-full ${config.color}`;
+            connectionStatus.className = `flex items-center gap-2 px-3 py-2 rounded-full ${config.bgColor}`;
+            statusText.textContent = config.text;
+        }
+
+        // Test connection function
+        async function testConnection() {
+            updateConnectionStatus('connecting');
+            
+            try {
+                const response = await fetch(`${API_URL}?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: 'اختبار الاتصال'
+                            }]
+                        }]
+                    })
+                });
+
+                if (response.ok) {
+                    updateConnectionStatus('connected');
+                    alert('✅ تم الاتصال بنجاح! الذكاء الاصطناعي جاهز للعمل.');
+                } else {
+                    updateConnectionStatus('error');
+                    alert('❌ فشل في الاتصال. يرجى التحقق من الإعدادات.');
+                }
+            } catch (error) {
+                updateConnectionStatus('error');
+                alert('❌ خطأ في الاتصال: ' + error.message);
+            }
+        }
+
+        // Developer modal functions
+        function showDeveloperModal() {
+            developerModal.classList.remove('hidden');
+            developerModalContent.style.transform = 'scale(1)';
+            developerModalContent.style.opacity = '1';
+        }
+
+        function hideDeveloperModal() {
+            developerModal.classList.add('hidden');
+        }
+
+        // Add some sample text for demonstration
+        textInput.placeholder = `مثال: اكتب هنا النص الذي تريد تصحيحه...
+
+يمكنك كتابة نص يحتوي على اخطاء املائيه ونحويه وسيقوم الذكاء الاصطناعي بتصحيحها لك.`;
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e8e87c12065ccc',t:'MTc1NTA5NTQwMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
